@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8fc" />
+    <title>CampusOS — Student Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["DM Sans", "Inter", "ui-sans-serif", "system-ui"],
+              display: ["Manrope", "DM Sans", "ui-sans-serif", "system-ui"],
+            },
+            colors: {
+              ink: "#17233d",
+              muted: "#77839a",
+              brand: "#5c63e6",
+              canvas: "#f7f8fc",
+            },
+            boxShadow: {
+              card: "0 14px 40px rgba(28, 42, 76, .06)",
+              lift: "0 20px 55px rgba(45, 55, 110, .12)",
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root { color-scheme: light; }
+      body { min-height: 100vh; }
+      .auth-pattern {
+        background-color: #202a57;
+        background-image: radial-gradient(at 10% 10%, rgba(139, 147, 255, .35) 0, transparent 36%),
+          radial-gradient(at 90% 85%, rgba(110, 88, 226, .36) 0, transparent 38%);
+      }
+      .auth-grid {
+        background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+        background-size: 42px 42px;
+        mask-image: linear-gradient(to bottom, black, transparent 88%);
+      }
+      .page-enter { animation: enter .28s ease-out both; }
+      @keyframes enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      .nav-link.active { color: #5c63e6; background: #f0f1ff; }
+      .nav-link.active svg { color: #5c63e6; }
+      .checkbox:checked + span { text-decoration: line-through; color: #9aa4b5; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+      }
+    </style>
+  </head>
+  <body class="bg-canvas font-sans text-ink antialiased">
+    <main id="app" class="min-h-screen"></main>
+    <div id="toast" role="status" aria-live="polite" class="pointer-events-none fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-ink px-4 py-3 text-sm font-medium text-white opacity-0 shadow-lift transition-opacity"></div>
+
+    <script>
+      const icons = {
+        grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+        book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+        users: '<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+        calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+        check: '<path d="m5 12 4 4L19 6"/>',
+        chart: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-5 5"/>',
+        settings: '<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.6-1.4-2.4 1.4-1.1A8 8 0 0 1 7 13l-1.8-.3V9.9L7 9.6a8 8 0 0 1 .9-1.7L6.5 6.5l1.4-2.4 1.7.6a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.6 1.4 2.4-1.4 1.1a8 8 0 0 1 .9 1.7l1.8.3v2.8l-1.8.3a8 8 0 0 1-.9 1.7Z"/>',
+        logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
+        bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+        search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+        arrow: '<path d="M7 17 17 7M7 7h10v10"/>',
+        clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+        chevron: '<path d="m9 18 6-6-6-6"/>',
+        spark: '<path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3Z"/><path d="m19 14 1.2 2.8L23 18l-2.8 1.2L19 22l-1.2-2.8L15 18l2.8-1.2L19 14Z"/>',
+      };
+      const icon = (name, cls = "h-5 w-5") =>
+        `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
+      const roleNames = { student: "Student", admin: "Administrator", staff: "Staff" };
+      const app = document.getElementById("app");
+      let currentRole = null;
+      let activeSection = "Overview";
+      let toastTimer;
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.classList.remove("opacity-0");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.add("opacity-0"), 2600);
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (character) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[character]);
+      }
+
+      function renderLogin() {
+        currentRole = null;
+        app.innerHTML = `
+          <div class="grid min-h-screen lg:grid-cols-[1fr_1fr]">
+            <section class="auth-pattern relative hidden overflow-hidden px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-20">
+              <div class="auth-grid absolute inset-0"></div>
+              <div class="relative z-10 flex items-center gap-3">
+                <div class="grid h-10 w-10 place-items-center rounded-xl bg-white/15">${icon("spark", "h-5 w-5")}</div>
+                <span class="font-display text-xl font-extrabold tracking-tight">Campus<span class="text-indigo-300">OS</span></span>
+              </div>
+              <div class="relative z-10 max-w-xl pb-8">
+                <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-indigo-100">${icon("spark", "h-3.5 w-3.5")} YOUR CAMPUS, CONNECTED</span>
+                <h1 class="font-display text-5xl font-extrabold leading-[1.12] tracking-tight xl:text-6xl">A better way<br />to <span class="text-indigo-300">learn together.</span></h1>
+                <p class="mt-6 max-w-md text-base leading-7 text-indigo-100/75">One thoughtful space for students, educators, and the people who make campus life happen.</p>
+                <div class="mt-12 flex items-center gap-4">
+                  <div class="flex -space-x-2">
+                    <div class="grid h-9 w-9 place-items-center rounded-full border-2 border-[#252e5c] bg-rose-200 text-xs font-bold text-rose-700">JS</div>
+                    <div class="grid h-9 w-9 place-items-center rounded-full border-2 border-[#252e5c] bg-amber-200 text-xs font-bold text-amber-700">AK</div>
+                    <div class="grid h-9 w-9 place-items-center rounded-full border-2 border-[#252e5c] bg-emerald-200 text-xs font-bold text-emerald-700">RM</div>
+                    <div class="grid h-9 w-9 place-items-center rounded-full border-2 border-[#252e5c] bg-indigo-200 text-xs font-bold text-indigo-700">+</div>
+                  </div>
+                  <p class="text-xs leading-5 text-indigo-100/70"><span class="font-semibold text-white">Made for your campus</span><br />Everything you need, all in one place.</p>
+                </div>
+              </div>
+              <p class="relative z-10 text-xs text-indigo-100/45">© 2025 CampusOS · Built for brighter futures</p>
+              <div class="absolute -right-32 top-1/4 h-96 w-96 rounded-full border border-white/10"></div>
+              <div class="absolute -right-16 top-[30%] h-64 w-64 rounded-full border border-white/10"></div>
+            </section>
+            <section class="flex min-h-screen items-center justify-center px-5 py-10 sm:px-10">
+              <div class="w-full max-w-[440px]">
+                <div class="mb-10 flex items-center gap-3 lg:hidden">
+                  <div class="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-white">${icon("spark", "h-5 w-5")}</div>
+                  <span class="font-display text-xl font-extrabold tracking-tight">Campus<span class="text-brand">OS</span></span>
+                </div>
+                <div class="mb-8">
+                  <p class="mb-3 text-xs font-bold uppercase tracking-[.16em] text-brand">Welcome to CampusOS</p>
+                  <h2 class="font-display text-3xl font-extrabold tracking-tight text-ink sm:text-[2.1rem]">Sign in to your account</h2>
+                  <p class="mt-2 text-sm text-muted">Enter your details to access your campus portal.</p>
+                </div>
+                <form id="login-form" class="space-y-5">
+                  <div>
+                    <label for="role" class="mb-2 block text-sm font-semibold text-slate-700">I am signing in as</label>
+                    <div class="relative">
+                      <select id="role" name="role" required class="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3.5 pr-11 text-sm font-medium text-ink outline-none transition focus:border-brand focus:ring-4 focus:ring-indigo-100">
+                        <option value="student">Student</option><option value="admin">Admin</option><option value="staff">Staff</option>
+                      </select>
+                      <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">${icon("chevron", "h-4 w-4 rotate-90")}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label for="identity" class="mb-2 block text-sm font-semibold text-slate-700">Email or username</label>
+                    <input id="identity" name="identity" type="text" autocomplete="username" required placeholder="you@campus.edu" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-indigo-100" />
+                  </div>
+                  <div>
+                    <label for="erp-id" class="mb-2 block text-sm font-semibold text-slate-700">Student ERP ID <span class="font-normal text-slate-400">(if applicable)</span></label>
+                    <input id="erp-id" name="erpId" type="text" autocomplete="off" required placeholder="e.g. STU2025001" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-indigo-100" />
+                  </div>
+                  <div>
+                    <div class="mb-2 flex items-center justify-between">
+                      <label for="password" class="text-sm font-semibold text-slate-700">Password</label>
+                      <a href="#" id="forgot-link" class="text-xs font-semibold text-brand hover:text-indigo-800">Forgot password?</a>
+                    </div>
+                    <div class="relative">
+                      <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 pr-12 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-indigo-100" />
+                      <button type="button" id="toggle-password" aria-label="Show password" class="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                        <svg id="eye-icon" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <label class="flex cursor-pointer items-center gap-2.5 pt-0.5 text-sm text-slate-600">
+                    <input type="checkbox" class="h-4 w-4 rounded border-slate-300 accent-brand focus:ring-brand" />
+                    Keep me signed in
+                  </label>
+                  <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3.5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(92,99,230,.22)] transition hover:-translate-y-0.5 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200">
+                    Sign in ${icon("chevron", "h-4 w-4")}
+                  </button>
+                </form>
+                <p class="mt-7 text-center text-sm text-slate-500">New to the portal? <a href="#" id="help-link" class="font-semibold text-brand hover:text-indigo-800">Contact your campus</a></p>
+                <p class="mt-9 text-center text-xs leading-5 text-slate-400">By continuing, you agree to your institution's acceptable use policy.<br />This is a demo portal. No credentials are verified or stored.</p>
+              </div>
+            </section>
+          </div>`;
+
+        const form = document.getElementById("login-form");
+        const roleSelect = document.getElementById("role");
+        const erpInput = document.getElementById("erp-id");
+        roleSelect.addEventListener("change", () => {
+          const isStudent = roleSelect.value === "student";
+          erpInput.disabled = !isStudent;
+          erpInput.required = isStudent;
+          erpInput.placeholder = isStudent ? "e.g. STU2025001" : "Only needed for student accounts";
+        });
+        document.getElementById("toggle-password").addEventListener("click", () => {
+          const input = document.getElementById("password");
+          const visible = input.type === "password";
+          input.type = visible ? "text" : "password";
+          document.getElementById("toggle-password").setAttribute("aria-label", visible ? "Hide password" : "Show password");
+        });
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          if (!form.reportValidity()) return;
+          const data = new FormData(form);
+          currentRole = data.get("role");
+          const name = escapeHtml(String(data.get("identity")).split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()));
+          renderDashboard(currentRole, name || roleNames[currentRole]);
+        });
+        document.getElementById("forgot-link").addEventListener("click", (event) => {
+          event.preventDefault();
+          showToast("Please contact your campus administrator to reset your password.");
+        });
+        document.getElementById("help-link").addEventListener("click", (event) => {
+          event.preventDefault();
+          showToast("Please contact your campus IT help desk.");
+        });
+      }
+
+      const navByRole = {
+        student: [["Overview", "grid"], ["My classes", "book"], ["Grades", "chart"], ["Schedule", "calendar"]],
+        admin: [["Overview", "grid"], ["User management", "users"], ["Analytics", "chart"], ["Settings", "settings"]],
+        staff: [["Overview", "grid"], ["My tasks", "check"], ["Schedule", "calendar"], ["Classes", "book"]],
+      };
+
+      function badge(text, tone = "indigo") {
+        const tones = {
+          indigo: "bg-indigo-50 text-indigo-700",
+          green: "bg-emerald-50 text-emerald-700",
+          amber: "bg-amber-50 text-amber-700",
+          rose: "bg-rose-50 text-rose-700",
+          slate: "bg-slate-100 text-slate-600",
+        };
+        return `<span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${tones[tone]}">${text}</span>`;
+      }
+
+      function studentContent(name) {
+        return `
+          <div class="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div><p class="mb-2 text-sm font-medium text-muted">Tuesday, October 7, 2025</p><h1 class="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Good morning, ${name} <span aria-hidden="true">👋</span></h1><p class="mt-2 text-sm text-muted">Here’s what’s happening with your learning today.</p></div>
+            <button data-action="calendar" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-brand">${icon("calendar", "h-4 w-4")} View schedule</button>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            ${metric("Enrolled classes", "06", "2 classes today", "book", "indigo")}
+            ${metric("Attendance", "94%", "+2.4% this month", "calendar", "green")}
+            ${metric("Average grade", "A−", "Top 12% of your class", "chart", "amber")}
+            ${metric("Assignments due", "03", "Next one due tomorrow", "check", "rose")}
+          </div>
+          <div class="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-card sm:p-6">
+              <div class="mb-5 flex items-center justify-between"><div><h2 class="font-display text-base font-extrabold">Your classes</h2><p class="mt-1 text-xs text-muted">Your progress this semester</p></div><button data-section="My classes" class="text-sm font-semibold text-brand hover:text-indigo-800">See all</button></div>
+              <div class="divide-y divide-slate-100">
+                ${course("Calculus II", "Prof. James Wilson", "MATH 204", "87", "B+", "indigo", "bg-indigo-500")}
+                ${course("Introduction to Biology", "Dr. Sarah Chen", "BIOL 101", "93", "A", "green", "bg-emerald-500")}
+                ${course("World Literature", "Prof. Elena Martinez", "LIT 220", "78", "B", "amber", "bg-amber-500")}
+                ${course("Computer Science", "Dr. Marcus Lee", "CS 150", "96", "A", "rose", "bg-rose-500")}
+              </div>
+            </section>
+            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-card sm:p-6">
+              <div class="mb-5 flex items-center justify-between"><div><h2 class="font-display text-base font-extrabold">Today’s schedule</h2><p class="mt-1 text-xs text-muted">Tuesday, October 7</p></div>${icon("calendar", "h-5 w-5 text-slate-300")}</div>
+              <div class="space-y-1">
+                ${scheduleItem("09:00", "Calculus II", "Room B · Science Hall", "indigo", "completed")}
+                ${scheduleItem("11:30", "Introduction to Biology", "Lab 204 · Life Sciences", "green", "now")}
+                ${scheduleItem("14:00", "Study group", "Learning Commons · Floor 2", "amber", "upcoming")}
+              </div>
+              <div class="mt-5 rounded-xl bg-indigo-50 p-4"><div class="flex items-start gap-3">${icon("spark", "h-5 w-5 shrink-0 text-brand")}<div><p class="text-sm font-bold text-indigo-950">You’re on a roll!</p><p class="mt-1 text-xs leading-5 text-indigo-800/75">You’ve attended 12 classes in a row. Keep it up!</p></div></div></div>
+            </section>
+          </div>`;
+      }
+
+      function adminContent(name) {
+        return `
+          <div class="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div><p class="mb-2 text-sm font-medium text-muted">Tuesday, October 7, 2025</p><h1 class="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Welcome back, ${name} <span aria-hidden="true">👋</span></h1><p class="mt-2 text-sm text-muted">Here’s an overview of your campus at a glance.</p></div>
+            <button data-action="add-user" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700"><span class="text-lg leading-none">+</span> Add user</button>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            ${metric("Total students", "2,840", "+8.2% vs last term", "users", "indigo")}
+            ${metric("Faculty & staff", "186", "Across 12 departments", "users", "green")}
+            ${metric("Active courses", "124", "18 starting this week", "book", "amber")}
+            ${metric("Campus attendance", "92.6%", "+1.8% this month", "chart", "rose")}
+          </div>
+          <div class="mt-6 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+            <section class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card">
+              <div class="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div><h2 class="font-display text-base font-extrabold">Recent users</h2><p class="mt-1 text-xs text-muted">Manage your campus community</p></div><label class="relative block"><span class="sr-only">Search users</span>${icon("search", "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400")}<input id="user-search" placeholder="Search users..." class="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-indigo-100 sm:w-48" /></label></div>
+              <div class="overflow-x-auto"><table class="w-full min-w-[580px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400"><tr><th class="px-6 py-3 font-semibold">User</th><th class="px-4 py-3 font-semibold">Role</th><th class="px-4 py-3 font-semibold">Status</th><th class="px-6 py-3 text-right font-semibold">Action</th></tr></thead><tbody id="user-rows" class="divide-y divide-slate-100">
+                ${userRow("Olivia Rhye", "olivia.rhye@campus.edu", "Student", "Active", "OR", "bg-rose-100 text-rose-700", "green")}
+                ${userRow("Phoenix Baker", "phoenix.baker@campus.edu", "Staff", "Active", "PB", "bg-amber-100 text-amber-700", "green")}
+                ${userRow("Lana Steiner", "lana.steiner@campus.edu", "Student", "Pending", "LS", "bg-emerald-100 text-emerald-700", "amber")}
+                ${userRow("Demi Wilkinson", "demi.wilkinson@campus.edu", "Admin", "Active", "DW", "bg-indigo-100 text-indigo-700", "green")}
+              </tbody></table></div>
+              <div class="flex items-center justify-between border-t border-slate-100 px-6 py-4 text-xs text-muted"><span>Showing 4 of 2,840 users</span><button data-action="users" class="font-semibold text-brand hover:text-indigo-800">View all users →</button></div>
+            </section>
+            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-card sm:p-6">
+              <div class="mb-5 flex items-center justify-between"><div><h2 class="font-display text-base font-extrabold">Campus activity</h2><p class="mt-1 text-xs text-muted">This semester at a glance</p></div><span class="rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500">This term</span></div>
+              <div class="flex h-40 items-end justify-between gap-2 border-b border-slate-100 pb-3">
+                ${[48, 72, 58, 86, 66, 95, 76, 62, 84, 71, 100, 78].map((h, i) => `<div class="group flex h-full flex-1 items-end"><div title="${h}% activity" style="height:${h}%" class="w-full rounded-t-md ${i === 10 ? "bg-brand" : "bg-indigo-100"} transition hover:bg-indigo-300"></div></div>`).join("")}
+              </div>
+              <div class="mt-2 flex justify-between text-[10px] font-medium text-slate-400"><span>Wk 1</span><span>Wk 4</span><span>Wk 8</span><span>Wk 12</span></div>
+              <div class="mt-6 space-y-4">
+                <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-xs text-slate-600"><i class="h-2 w-2 rounded-full bg-brand"></i>Student engagement</span><span class="text-xs font-bold text-ink">87%</span></div>
+                <div class="h-1.5 rounded-full bg-slate-100"><div class="h-1.5 w-[87%] rounded-full bg-brand"></div></div>
+                <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-xs text-slate-600"><i class="h-2 w-2 rounded-full bg-emerald-500"></i>Course completion</span><span class="text-xs font-bold text-ink">73%</span></div>
+                <div class="h-1.5 rounded-full bg-slate-100"><div class="h-1.5 w-[73%] rounded-full bg-emerald-500"></div></div>
+              </div>
+            </section>
+          </div>`;
+      }
+
+      function staffContent(name) {
+        return `
+          <div class="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div><p class="mb-2 text-sm font-medium text-muted">Tuesday, October 7, 2025</p><h1 class="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Good morning, ${name} <span aria-hidden="true">👋</span></h1><p class="mt-2 text-sm text-muted">Let’s make today a productive one.</p></div>
+            <button data-action="schedule" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-brand">${icon("calendar", "h-4 w-4")} Full schedule</button>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            ${metric("Tasks to complete", "05", "2 marked as priority", "check", "indigo")}
+            ${metric("Classes today", "04", "Next one at 11:30 AM", "book", "green")}
+            ${metric("Office hours", "2 hrs", "Next: 1:00 – 3:00 PM", "clock", "amber")}
+            ${metric("Student messages", "08", "3 need your reply", "users", "rose")}
+          </div>
+          <div class="mt-6 grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-card sm:p-6">
+              <div class="mb-5 flex items-center justify-between"><div><h2 class="font-display text-base font-extrabold">Your task list</h2><p class="mt-1 text-xs text-muted">A little progress goes a long way</p></div>${badge("3 of 5 done", "indigo")}</div>
+              <div class="space-y-3">
+                ${taskItem("Review midterm submissions", "CS 150 · 24 submissions", true, "High priority")}
+                ${taskItem("Prepare lecture slides", "Introduction to Biology · Week 8", false, "Today")}
+                ${taskItem("Reply to student messages", "3 unread messages", false, "Today")}
+                ${taskItem("Update course reading list", "World Literature · Fall term", true, "Completed")}
+                ${taskItem("Submit weekly attendance", "Due Wednesday, Oct 8", true, "Completed")}
+              </div>
+              <button data-action="add-task" class="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand hover:text-indigo-800"><span class="text-lg leading-none">+</span> Add a task</button>
+            </section>
+            <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-card sm:p-6">
+              <div class="mb-5 flex items-center justify-between"><div><h2 class="font-display text-base font-extrabold">Today’s schedule</h2><p class="mt-1 text-xs text-muted">Tuesday, October 7</p></div>${icon("calendar", "h-5 w-5 text-slate-300")}</div>
+              <div class="space-y-1">
+                ${scheduleItem("09:00", "Faculty check-in", "Conference Room A", "indigo", "completed")}
+                ${scheduleItem("11:30", "Introduction to Biology", "Lecture Hall 2 · 45 students", "green", "now")}
+                ${scheduleItem("13:00", "Student office hours", "Faculty Office · Room 304", "amber", "upcoming")}
+                ${scheduleItem("15:30", "Curriculum planning", "Science Building · Room 18", "rose", "upcoming")}
+              </div>
+            </section>
+          </div>`;
+      }
+
+      function metric(label, value, note, iconName, tone) {
+        const styles = {
+          indigo: "bg-indigo-50 text-indigo-600",
+          green: "bg-emerald-50 text-emerald-600",
+          amber: "bg-amber-50 text-amber-600",
+          rose: "bg-rose-50 text-rose-600",
+        };
+        return `<article class="rounded-2xl border border-slate-100 bg-white p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-lift"><div class="flex items-start justify-between"><p class="text-sm font-medium text-muted">${label}</p><span class="grid h-10 w-10 place-items-center rounded-xl ${styles[tone]}">${icon(iconName, "h-5 w-5")}</span></div><p class="mt-4 font-display text-3xl font-extrabold tracking-tight">${value}</p><p class="mt-2 text-xs text-muted">${note}</p></article>`;
+      }
+
+      function course(title, instructor, code, progress, grade, gradeTone, bar) {
+        return `<div class="flex items-center gap-3 py-4 first:pt-0 last:pb-0"><div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl ${gradeTone === "indigo" ? "bg-indigo-50 text-indigo-600" : gradeTone === "green" ? "bg-emerald-50 text-emerald-600" : gradeTone === "amber" ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}">${icon("book", "h-5 w-5")}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><p class="truncate text-sm font-bold text-ink">${title}</p>${badge(grade, gradeTone)}</div><p class="mt-1 truncate text-xs text-muted">${code} · ${instructor}</p><div class="mt-2 h-1.5 max-w-48 rounded-full bg-slate-100"><div style="width:${progress}%" class="h-1.5 rounded-full ${bar}"></div></div></div><span class="text-xs font-semibold text-slate-500">${progress}%</span></div>`;
+      }
+
+      function scheduleItem(time, title, place, tone, state) {
+        const color = { indigo: "border-indigo-400", green: "border-emerald-400", amber: "border-amber-400", rose: "border-rose-400" }[tone];
+        const current = state === "now";
+        return `<div class="relative flex gap-4 border-l-2 ${color} py-2 pl-4 ${current ? "rounded-r-lg bg-indigo-50/70 pr-3" : ""}"><div class="w-12 shrink-0 pt-0.5 text-xs font-bold ${current ? "text-brand" : "text-slate-500"}">${time}</div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><p class="text-sm font-bold text-ink">${title}</p>${current ? badge("NOW", "indigo") : ""}</div><p class="mt-1 text-xs text-muted">${place}</p></div></div>`;
+      }
+
+      function userRow(name, email, role, status, initials, avatar, tone) {
+        return `<tr class="user-row transition hover:bg-slate-50" data-search="${`${name} ${email} ${role}`.toLowerCase()}"><td class="px-6 py-4"><div class="flex items-center gap-3"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold ${avatar}">${initials}</span><div><p class="whitespace-nowrap text-sm font-semibold text-ink">${name}</p><p class="text-xs text-muted">${email}</p></div></div></td><td class="px-4 py-4 text-slate-600">${role}</td><td class="px-4 py-4">${badge(status, tone)}</td><td class="px-6 py-4 text-right"><button data-action="edit-user" class="text-xs font-semibold text-brand hover:text-indigo-800">Edit</button></td></tr>`;
+      }
+
+      function taskItem(title, details, checked, status) {
+        return `<label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-100 p-3.5 transition hover:border-indigo-100 hover:bg-slate-50/60"><input type="checkbox" class="checkbox mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-brand" ${checked ? "checked" : ""} /><span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-ink">${title}</span><span class="mt-1 block text-xs text-muted">${details}</span></span><span class="shrink-0 pt-0.5 text-[10px] font-bold uppercase tracking-wide ${status === "High priority" ? "text-rose-500" : status === "Completed" ? "text-emerald-600" : "text-amber-600"}">${status}</span></label>`;
+      }
+
+      function renderDashboard(role, name) {
+        activeSection = "Overview";
+        const nav = navByRole[role];
+        const content = role === "student" ? studentContent(name) : role === "admin" ? adminContent(name) : staffContent(name);
+        app.innerHTML = `
+          <div class="min-h-screen lg:flex">
+            <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-[260px] -translate-x-full flex-col border-r border-slate-100 bg-white px-5 py-6 transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
+              <div class="flex items-center gap-3 px-2"><div class="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white">${icon("spark", "h-5 w-5")}</div><span class="font-display text-xl font-extrabold tracking-tight">Campus<span class="text-brand">OS</span></span></div>
+              <div class="mt-9 rounded-xl bg-slate-50 p-3"><div class="flex items-center gap-3"><div class="grid h-9 w-9 place-items-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">${name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</div><div class="min-w-0"><p class="truncate text-sm font-bold text-ink">${name}</p><p class="text-xs text-muted">${roleNames[role]} portal</p></div><button data-action="profile" aria-label="Profile options" class="ml-auto text-slate-400 hover:text-slate-700">${icon("chevron", "h-4 w-4")}</button></div></div>
+              <p class="mb-2 mt-8 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Workspace</p>
+              <nav class="space-y-1" aria-label="Main navigation">${nav.map(([label, glyph], i) => `<button data-section="${label}" class="nav-link ${i === 0 ? "active" : ""} flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-ink">${icon(glyph, "h-[18px] w-[18px]")}<span>${label}</span>${label === "User management" ? '<span class="ml-auto rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">2.8k</span>' : ""}</button>`).join("")}</nav>
+              <div class="mt-auto">
+                <div class="rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-4"><div class="mb-2 grid h-8 w-8 place-items-center rounded-lg bg-white text-brand shadow-sm">${icon("spark", "h-4 w-4")}</div><p class="text-sm font-bold text-ink">Need a hand?</p><p class="mt-1 text-xs leading-5 text-muted">Our campus support team is here for you.</p><button data-action="support" class="mt-3 text-xs font-bold text-brand hover:text-indigo-800">Get support →</button></div>
+                <button data-action="logout" class="mt-5 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600">${icon("logout", "h-[18px] w-[18px]")} Sign out</button>
+                <p class="mt-4 px-3 text-[10px] text-slate-400">CampusOS v1.0 · Help & support</p>
+              </div>
+            </aside>
+            <div id="sidebar-scrim" class="fixed inset-0 z-30 hidden bg-slate-950/30 lg:hidden"></div>
+            <div class="min-w-0 flex-1">
+              <header class="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-slate-100 bg-white/90 px-4 backdrop-blur-md sm:px-7 lg:px-9">
+                <div class="flex items-center gap-3"><button id="menu-button" aria-label="Open navigation menu" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden">${icon("menu", "h-5 w-5")}</button><span class="text-xs font-medium text-muted sm:text-sm">Pages <span class="mx-1.5 text-slate-300">/</span> <span id="breadcrumb" class="font-semibold text-ink">Overview</span></span></div>
+                <div class="flex items-center gap-2 sm:gap-4"><span class="hidden text-xs text-muted sm:block">Fall semester 2025</span><button data-action="notifications" aria-label="Notifications" class="relative rounded-xl p-2 text-slate-500 transition hover:bg-slate-100">${icon("bell", "h-5 w-5")}<span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-rose-500"></span></button><span class="h-7 w-px bg-slate-200"></span><button data-action="profile" class="flex items-center gap-2 rounded-lg p-1 hover:bg-slate-50"><span class="grid h-8 w-8 place-items-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700">${name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</span><span class="hidden max-w-28 truncate text-xs font-semibold text-slate-700 sm:block">${name}</span></button></div>
+              </header>
+              <main class="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-9"><div id="dashboard-content" class="page-enter">${content}</div><footer class="mt-10 flex flex-col justify-between gap-2 border-t border-slate-200/70 py-5 text-xs text-slate-400 sm:flex-row"><span>© 2025 CampusOS · Made for your campus community</span><span>Privacy · Help center · Accessibility</span></footer></main>
+            </div>
+          </div>`;
+
+        document.getElementById("menu-button").addEventListener("click", () => toggleSidebar(true));
+        document.getElementById("sidebar-scrim").addEventListener("click", () => toggleSidebar(false));
+        document.querySelectorAll("[data-section]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const section = button.dataset.section;
+            if (section === "Overview") {
+              activeSection = section;
+              document.getElementById("breadcrumb").textContent = section;
+              document.querySelectorAll(".nav-link").forEach((item) => item.classList.toggle("active", item.dataset.section === section));
+              toggleSidebar(false);
+              return;
+            }
+            activeSection = section;
+            document.getElementById("breadcrumb").textContent = section;
+            document.querySelectorAll(".nav-link").forEach((item) => item.classList.toggle("active", item.dataset.section === section));
+            document.getElementById("dashboard-content").innerHTML = sectionContent(role, section);
+            document.getElementById("dashboard-content").classList.remove("page-enter");
+            void document.getElementById("dashboard-content").offsetWidth;
+            document.getElementById("dashboard-content").classList.add("page-enter");
+            toggleSidebar(false);
+          });
+        });
+        app.onclick = (event) => {
+          const button = event.target.closest("[data-action]");
+          if (button) handleAction(button.dataset.action, button);
+        };
+        attachContentEvents();
+      }
+
+      function sectionContent(role, section) {
+        const title = section;
+        const descriptions = {
+          "My classes": ["Your learning, all in one place.", "Browse your current courses, instructors, and progress."],
+          Grades: ["Your hard work, clearly tracked.", "Review your grades and semester progress."],
+          Schedule: ["Plan your campus day.", "Stay on top of classes, events, and important dates."],
+          "User management": ["Your campus community.", "Search and manage student, staff, and administrator accounts."],
+          Analytics: ["Insights that move your campus forward.", "A snapshot of engagement and academic progress."],
+          Settings: ["Make CampusOS work for you.", "Manage portal preferences and account settings."],
+          "My tasks": ["Small steps, meaningful progress.", "Keep track of what needs your attention."],
+          Classes: ["Your teaching schedule.", "See your courses and upcoming classes."],
+        };
+        const [headline, subline] = descriptions[section] || ["Here’s your campus overview.", "Your tools and information are ready when you are."];
+        let body;
+        if (role === "student" && (section === "My classes" || section === "Grades")) {
+          body = `<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">${[
+            ["Calculus II", "MATH 204", "87", "B+", "indigo"], ["Introduction to Biology", "BIOL 101", "93", "A", "green"], ["World Literature", "LIT 220", "78", "B", "amber"], ["Computer Science", "CS 150", "96", "A", "rose"],
+          ].map((item) => `<article class="rounded-2xl border border-slate-100 bg-white p-5 shadow-card"><div class="flex items-start justify-between">${icon("book", "h-5 w-5 text-brand")}${badge(item[3], item[4])}</div><h2 class="mt-5 font-display text-base font-extrabold">${item[0]}</h2><p class="mt-1 text-xs text-muted">${item[1]} · Fall 2025</p><div class="mt-5 flex items-end justify-between"><span class="text-xs text-muted">Current grade</span><span class="font-display text-2xl font-extrabold">${item[2]}%</span></div><div class="mt-2 h-1.5 rounded-full bg-slate-100"><div style="width:${item[2]}%" class="h-1.5 rounded-full bg-brand"></div></div></article>`).join("")}</div>`;
+        } else if (role === "admin" && section === "User management") {
+          body = `<section class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card"><div class="flex items-center justify-between border-b border-slate-100 p-5"><h2 class="font-display font-extrabold">All campus users</h2><button data-action="add-user" class="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white">+ Add user</button></div><div class="overflow-x-auto"><table class="w-full min-w-[580px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-400"><tr><th class="px-6 py-3">User</th><th class="px-4 py-3">Role</th><th class="px-4 py-3">Status</th><th class="px-6 py-3 text-right">Action</th></tr></thead><tbody class="divide-y divide-slate-100">${userRow("Olivia Rhye", "olivia.rhye@campus.edu", "Student", "Active", "OR", "bg-rose-100 text-rose-700", "green")}${userRow("Phoenix Baker", "phoenix.baker@campus.edu", "Staff", "Active", "PB", "bg-amber-100 text-amber-700", "green")}${userRow("Lana Steiner", "lana.steiner@campus.edu", "Student", "Pending", "LS", "bg-emerald-100 text-emerald-700", "amber")}${userRow("Demi Wilkinson", "demi.wilkinson@campus.edu", "Admin", "Active", "DW", "bg-indigo-100 text-indigo-700", "green")}</tbody></table></div></section>`;
+        } else if (role === "staff" && section === "My tasks") {
+          body = `<section class="max-w-3xl rounded-2xl border border-slate-100 bg-white p-5 shadow-card sm:p-6"><h2 class="mb-5 font-display font-extrabold">Your tasks</h2><div class="space-y-3">${taskItem("Review midterm submissions", "CS 150 · 24 submissions", false, "High priority")}${taskItem("Prepare lecture slides", "Introduction to Biology · Week 8", false, "Today")}${taskItem("Reply to student messages", "3 unread messages", false, "Today")}${taskItem("Update course reading list", "World Literature · Fall term", true, "Completed")}</div></section>`;
+        } else {
+          body = `<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">${metric(role === "staff" ? "Classes today" : role === "admin" ? "Total students" : "Classes this week", role === "admin" ? "2,840" : role === "staff" ? "04" : "06", "Updated for Fall semester 2025", "calendar", "indigo")}${metric(role === "staff" ? "Tasks to complete" : "Upcoming events", role === "staff" ? "05" : "03", "You’re all caught up", "check", "green")}${metric("Campus updates", "08", "See what's new this week", "spark", "amber")}</div><div class="mt-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-card"><h2 class="font-display font-extrabold">Coming up</h2><div class="mt-4">${scheduleItem("11:30", role === "staff" ? "Introduction to Biology" : "Campus community meetup", "Science Hall · Main campus", "indigo", "now")}${scheduleItem("14:00", "Academic advising", "Student Services · Room 104", "green", "upcoming")}</div></div>`;
+        }
+        return `<div class="mb-7"><p class="mb-2 text-sm font-medium text-muted">Fall semester 2025</p><h1 class="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">${title}</h1><p class="mt-2 text-sm text-muted">${headline} ${subline}</p></div>${body}`;
+      }
+
+      function attachContentEvents() {
+        const search = document.getElementById("user-search");
+        if (search) search.addEventListener("input", () => {
+          const query = search.value.trim().toLowerCase();
+          document.querySelectorAll(".user-row").forEach((row) => {
+            row.classList.toggle("hidden", !row.dataset.search.includes(query));
+          });
+        });
+      }
+
+      function handleAction(action, button) {
+        if (action === "logout") {
+          renderLogin();
+          return;
+        }
+        if (action === "users") {
+          const usersNav = document.querySelector('[data-section="User management"]');
+          if (usersNav) usersNav.click();
+          return;
+        }
+        if (action === "calendar" || action === "schedule") {
+          const scheduleNav = document.querySelector('[data-section="Schedule"]');
+          if (scheduleNav) scheduleNav.click();
+          else showToast("Your full schedule is up to date.");
+          return;
+        }
+        const messages = {
+          "add-user": "User invitations are available in the connected campus system.",
+          "edit-user": "User details are managed by your campus administrator.",
+          "add-task": "Task added to your personal list.",
+          notifications: "You’re all caught up on notifications.",
+          profile: "Profile settings are managed by your campus.",
+          support: "Please contact your campus IT help desk.",
+        };
+        showToast(messages[action] || "This demo action is not connected to a campus system.");
+      }
+
+      function toggleSidebar(open) {
+        const sidebar = document.getElementById("sidebar");
+        const scrim = document.getElementById("sidebar-scrim");
+        if (!sidebar || !scrim) return;
+        sidebar.classList.toggle("-translate-x-full", !open);
+        scrim.classList.toggle("hidden", !open);
+      }
+
+      renderLogin();
+    </script>
+  </body>
+</html>
